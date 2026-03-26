@@ -38,8 +38,8 @@ async def get_trend(
         SELECT
             {period_expr} AS period,
             COUNT(*) AS total_trx,
-            COUNT(*) FILTER (WHERE TYPE IN ('WDL','TRF','PUR') AND RC = '00') AS financial_trx,
-            COALESCE(SUM(CAST(AMOUNT AS BIGINT)) FILTER (WHERE TYPE IN ('WDL','TRF','PUR') AND RC = '00'), 0) AS revenue,
+            COUNT(*) FILTER (WHERE TYPE IN ('WDL','TRF','PUR','BAL','SET') AND RC = '00') AS financial_trx,
+            COALESCE(SUM(CAST(AMOUNT AS BIGINT)) FILTER (WHERE TYPE IN ('WDL','TRF','PUR','BAL','SET') AND RC = '00'), 0) AS revenue,
             ROUND(
                 COUNT(*) FILTER (WHERE RC = '00') * 100.0 / NULLIF(COUNT(*), 0), 1
             ) AS success_rate
@@ -73,7 +73,7 @@ async def get_by_group(
         SELECT
             grp AS "group",
             COUNT(*) AS total_trx,
-            COALESCE(SUM(CAST(AMOUNT AS BIGINT)) FILTER (WHERE TYPE IN ('WDL','TRF','PUR') AND RC = '00'), 0) AS revenue,
+            COALESCE(SUM(CAST(AMOUNT AS BIGINT)) FILTER (WHERE TYPE IN ('WDL','TRF','PUR','BAL','SET') AND RC = '00'), 0) AS revenue,
             ROUND(COUNT(*) FILTER (WHERE RC = '00') * 100.0 / NULLIF(COUNT(*), 0), 1) AS success_rate,
             COUNT(DISTINCT "TERMINAL-ID") AS terminal_count
         FROM enriched
@@ -106,7 +106,7 @@ async def get_by_city(
         SELECT
             city,
             COUNT(*) AS total_trx,
-            COALESCE(SUM(CAST(AMOUNT AS BIGINT)) FILTER (WHERE TYPE IN ('WDL','TRF','PUR') AND RC = '00'), 0) AS revenue,
+            COALESCE(SUM(CAST(AMOUNT AS BIGINT)) FILTER (WHERE TYPE IN ('WDL','TRF','PUR','BAL','SET') AND RC = '00'), 0) AS revenue,
             COUNT(DISTINCT "TERMINAL-ID") AS terminal_count,
             ROUND(COUNT(*) FILTER (WHERE RC = '00') * 100.0 / NULLIF(COUNT(*), 0), 1) AS success_rate
         FROM enriched

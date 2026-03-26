@@ -12,15 +12,15 @@ async def get_overview():
     main_df = await db.run_query("""
         SELECT
             COUNT(*)                                                                    AS total_trx,
-            COUNT(*) FILTER (WHERE TYPE IN ('WDL','TRF','PUR') AND RC = '00')          AS financial_trx,
+            COUNT(*) FILTER (WHERE TYPE IN ('WDL','TRF','PUR','BAL','SET') AND RC = '00')          AS financial_trx,
             COALESCE(SUM(CAST(AMOUNT AS BIGINT))
-                FILTER (WHERE TYPE IN ('WDL','TRF','PUR') AND RC = '00'), 0)           AS total_revenue,
+                FILTER (WHERE TYPE IN ('WDL','TRF','PUR','BAL','SET') AND RC = '00'), 0)           AS total_revenue,
             ROUND(
                 COUNT(*) FILTER (WHERE RC = '00') * 100.0
-                / NULLIF(COUNT(*) FILTER (WHERE TYPE IN ('WDL','TRF','PUR')), 0), 1
+                / NULLIF(COUNT(*) FILTER (WHERE TYPE IN ('WDL','TRF','PUR','BAL','SET')), 0), 1
             )                                                                           AS success_rate,
             COALESCE(AVG(CAST(AMOUNT AS DOUBLE))
-                FILTER (WHERE TYPE IN ('WDL','TRF','PUR') AND RC = '00'), 0)           AS avg_ticket,
+                FILTER (WHERE TYPE IN ('WDL','TRF','PUR','BAL','SET') AND RC = '00'), 0)           AS avg_ticket,
             COUNT(DISTINCT "TERMINAL-ID")
                 FILTER (WHERE "TERMINAL-ID" IS NOT NULL)                                AS active_terminals,
             CAST(MIN(CAST(DATETIME AS TIMESTAMP)) AS DATE)::VARCHAR                    AS date_from,

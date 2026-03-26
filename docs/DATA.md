@@ -30,10 +30,10 @@ File utama transaksi EDC/ATM. Separator: **semicolon (`;`)**.
 | `WDL` | Withdrawal (Tarik Tunai) | ✅ Ya | Transaksi final |
 | `TRF` | Transfer | ✅ Ya | Transaksi final |
 | `PUR` | Purchase / QRIS | ✅ Ya | Transaksi final — generate QR |
-| `ADV` | Advance (Query QR Manual) | ❌ Tidak | Intermediate step QRIS; jika berhasil, `PUR` di-flag sukses. Setara dengan `INQ` untuk alur TRF/WDL |
-| `INQ` | Inquiry | ❌ Tidak | Intermediate step sebelum `TRF` atau `WDL`, bukan transaksi final |
-| `BAL` | Balance Check | ❌ Tidak | Cek saldo, tidak ada pergerakan dana |
-| `SET` | Settlement | ❌ Tidak | Proses settlement, bukan transaksi nasabah |
+| `BAL` | Balance Inquiry Berbayar | ✅ Ya | Cek saldo yang dikenakan fee — ada pergerakan dana |
+| `SET` | Settlement QRIS (BI FAST) | ✅ Ya | Pencairan dana hasil QRIS ke rekening merchant via BI FAST |
+| `ADV` | Advance (Query QR Manual) | ❌ Tidak | Intermediate step QRIS; jika berhasil, `PUR` di-flag sukses. Setara `INQ` untuk alur TRF/WDL |
+| `INQ` | Inquiry | ❌ Tidak | Intermediate step sebelum `TRF` atau `WDL`, tidak dikenakan fee |
 
 ### RC Values (Top)
 | RC | Keterangan |
@@ -113,9 +113,10 @@ bank_name = bin_list.get(bin_code, {}).get("name", "Unknown")
 
 ### Definisi Transaksi Finansial
 ```sql
-WHERE TYPE IN ('WDL', 'TRF', 'PUR') AND RC = '00'
+WHERE TYPE IN ('WDL', 'TRF', 'PUR', 'BAL', 'SET') AND RC = '00'
 ```
-> `ADV` dikecualikan karena merupakan intermediate step QRIS (bukan transaksi final), sama seperti `INQ` untuk alur TRF/WDL.
+> `INQ` dan `ADV` dikecualikan — keduanya merupakan intermediate step (tidak ada pergerakan dana final).
+> `BAL` termasuk karena dikenakan fee. `SET` termasuk karena merupakan pencairan dana QRIS via BI FAST.
 
 ### DuckDB Table Names
 Saat runtime, DuckDB meregister file sebagai:
