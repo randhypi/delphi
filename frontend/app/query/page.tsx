@@ -13,7 +13,7 @@ const EXAMPLE_QUERIES = [
   },
   {
     label: "Revenue per Hari",
-    sql: "SELECT CAST(CAST(DATETIME AS TIMESTAMP) AS DATE) AS tanggal,\n  SUM(CAST(AMOUNT AS BIGINT)) AS revenue,\n  COUNT(*) AS trx_count\nFROM enriched\nWHERE TYPE IN ('WDL','TRF','PUR','ADV') AND RC = '00'\nGROUP BY tanggal\nORDER BY tanggal DESC",
+    sql: "SELECT CAST(CAST(DATETIME AS TIMESTAMP) AS DATE) AS tanggal,\n  SUM(CAST(AMOUNT AS BIGINT)) AS revenue,\n  COUNT(*) AS trx_count\nFROM enriched\nWHERE TYPE IN ('WDL','TRF','PUR') AND RC = '00'\nGROUP BY tanggal\nORDER BY tanggal DESC",
   },
   {
     label: "Distribusi RC",

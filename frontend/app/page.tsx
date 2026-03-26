@@ -137,7 +137,7 @@ export default function HomePage() {
           iconColor="text-violet-600"
           iconBg="bg-violet-50"
           loading={loading}
-          subtitle="WDL · TRF · PUR · ADV (RC 00)"
+          subtitle="WDL · TRF · PUR (RC 00)"
         />
         <KPICard
           title="Total Revenue"

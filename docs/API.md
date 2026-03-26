@@ -48,6 +48,7 @@ Tren transaksi & revenue harian atau per jam.
 ```json
 [
   { "period": "2026-03-15", "total_trx": 5821, "financial_trx": 2140, "revenue": 320000000, "success_rate": 83.5 }
+  // financial_trx = TYPE IN ('WDL','TRF','PUR') AND RC='00' — ADV dikecualikan (intermediate QRIS)
 ]
 ```
 

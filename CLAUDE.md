@@ -25,7 +25,8 @@ DELPHI adalah full-stack analytics dashboard untuk C-Level.
 - ALWAYS update `CHANGELOG.md` saat ada perubahan signifikan
 - NEVER hardcode credentials, API keys, atau URL server production
 - ALWAYS gunakan DuckDB untuk query analitik — jangan filter dengan Pandas loop
-- Financial transactions = TYPE IN ('WDL', 'TRF', 'PUR', 'ADV') AND RC = '00'
+- Financial transactions = TYPE IN ('WDL', 'TRF', 'PUR') AND RC = '00'
+- ADV = intermediate step QRIS (query QR manual), bukan transaksi final — exclude dari revenue & financial count (sama seperti INQ untuk TRF/WDL)
 - Exclude dari revenue: TYPE IN ('INQ', 'BAL', 'SET')
 - Join key transaksi → terminal: `TERMINAL-ID` = `TerminalID`
 - BIN enrichment: ambil 6 digit pertama PAN, lookup ke `bin_list.json`

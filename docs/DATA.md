@@ -25,15 +25,15 @@ File utama transaksi EDC/ATM. Separator: **semicolon (`;`)**.
 | `RC` | string | `00` | Response code |
 
 ### TYPE Values
-| Kode | Nama | Finansial? |
-|---|---|---|
-| `WDL` | Withdrawal (Tarik Tunai) | ✅ Ya |
-| `TRF` | Transfer | ✅ Ya |
-| `PUR` | Purchase | ✅ Ya |
-| `ADV` | Advance | ✅ Ya |
-| `INQ` | Inquiry (Cek Saldo) | ❌ Tidak |
-| `BAL` | Balance Check | ❌ Tidak |
-| `SET` | Settlement | ❌ Tidak |
+| Kode | Nama | Finansial? | Keterangan |
+|---|---|---|---|
+| `WDL` | Withdrawal (Tarik Tunai) | ✅ Ya | Transaksi final |
+| `TRF` | Transfer | ✅ Ya | Transaksi final |
+| `PUR` | Purchase / QRIS | ✅ Ya | Transaksi final — generate QR |
+| `ADV` | Advance (Query QR Manual) | ❌ Tidak | Intermediate step QRIS; jika berhasil, `PUR` di-flag sukses. Setara dengan `INQ` untuk alur TRF/WDL |
+| `INQ` | Inquiry | ❌ Tidak | Intermediate step sebelum `TRF` atau `WDL`, bukan transaksi final |
+| `BAL` | Balance Check | ❌ Tidak | Cek saldo, tidak ada pergerakan dana |
+| `SET` | Settlement | ❌ Tidak | Proses settlement, bukan transaksi nasabah |
 
 ### RC Values (Top)
 | RC | Keterangan |
@@ -113,8 +113,9 @@ bank_name = bin_list.get(bin_code, {}).get("name", "Unknown")
 
 ### Definisi Transaksi Finansial
 ```sql
-WHERE TYPE IN ('WDL', 'TRF', 'PUR', 'ADV') AND RC = '00'
+WHERE TYPE IN ('WDL', 'TRF', 'PUR') AND RC = '00'
 ```
+> `ADV` dikecualikan karena merupakan intermediate step QRIS (bukan transaksi final), sama seperti `INQ` untuk alur TRF/WDL.
 
 ### DuckDB Table Names
 Saat runtime, DuckDB meregister file sebagai:
