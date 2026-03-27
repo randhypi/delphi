@@ -11,6 +11,12 @@ import type {
   QueryResponse,
   UploadResponse,
   BinUploadResponse,
+  SavedQueryListItem,
+  SavedQuery,
+  VizConfig,
+  ProductivityTrendItem,
+  ProductivitySummaryResponse,
+  ProductivityDetailResponse,
 } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -119,6 +125,56 @@ export const postQuery = (sql: string): Promise<QueryResponse> =>
     method: "POST",
     body: JSON.stringify({ sql }),
   });
+
+// ─── Productivity ─────────────────────────────────────────────────────────────
+
+export interface ProductivityParams {
+  date_from?: string;
+  date_to?: string;
+  group_by?: "group" | "city" | "loket";
+  top_n?: number;
+}
+
+export const getProductivityTrend = (params: ProductivityParams = {}): Promise<ProductivityTrendItem[]> =>
+  apiFetch<ProductivityTrendItem[]>(`/api/productivity/trend${buildParams(params)}`);
+
+export const getProductivitySummary = (params: ProductivityParams = {}): Promise<ProductivitySummaryResponse> =>
+  apiFetch<ProductivitySummaryResponse>(`/api/productivity/summary${buildParams(params)}`);
+
+export interface DetailParams {
+  dimension: string;
+  date_from?: string;
+  date_to?: string;
+  group_by?: "group" | "city" | "loket";
+}
+
+export const getProductivityDetail = (params: DetailParams): Promise<ProductivityDetailResponse> =>
+  apiFetch<ProductivityDetailResponse>(`/api/productivity/detail${buildParams(params)}`);
+
+// ─── Saved Queries ───────────────────────────────────────────────────────────
+
+export const getSavedQueries = (): Promise<SavedQueryListItem[]> =>
+  apiFetch<SavedQueryListItem[]>("/api/saved-queries");
+
+export const getSavedQuery = (id: string): Promise<SavedQuery> =>
+  apiFetch<SavedQuery>(`/api/saved-queries/${id}`);
+
+export interface SavedQueryCreate {
+  title: string;
+  sql: string;
+  viz_config: VizConfig | null;
+  insight: string | null;
+  result: QueryResponse;
+}
+
+export const saveQuery = (data: SavedQueryCreate): Promise<SavedQuery> =>
+  apiFetch<SavedQuery>("/api/saved-queries", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const deleteSavedQuery = (id: string): Promise<void> =>
+  apiFetch<void>(`/api/saved-queries/${id}`, { method: "DELETE" });
 
 // ─── Upload ───────────────────────────────────────────────────────────────────
 

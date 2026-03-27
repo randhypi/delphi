@@ -1,7 +1,7 @@
 ---
 name: add-feature
 description: SOP menambah fitur baru di DELPHI — mencakup BE endpoint (FastAPI) dan FE component (Next.js)
-version: 1.0.0
+version: 1.1.0
 ---
 
 <objective>
@@ -41,42 +41,53 @@ class FeatureResponse(BaseModel):
     field_2: int
 ```
 
-### Step 3 — Backend: Query DuckDB
-Di `backend/services/db.py`, tambah fungsi query:
+### Step 3 — Backend: Router
+Buat `backend/routers/<feature>.py`. Semua query **wajib async** via `db.run_query()`:
 ```python
-def get_feature_data(params) -> list[dict]:
-    sql = """
+from fastapi import APIRouter, Query
+from typing import Optional
+from datetime import date
+from models.schemas import FeatureResponse
+from services import db
+from routers.analytics import build_date_filter
+
+router = APIRouter(prefix="/<feature>")
+
+@router.get("/", response_model=list[FeatureResponse])
+async def get_feature(
+    date_from: Optional[date] = None,
+    date_to:   Optional[date] = None,
+):
+    db.check_data_or_raise()
+    date_filter = build_date_filter(date_from, date_to)
+    sql = f"""
         SELECT ...
-        FROM transactions t
-        LEFT JOIN terminals term ON t."TERMINAL-ID" = term.TerminalID
-        WHERE ...
+        FROM enriched          -- sudah include join terminal + bin
+        WHERE ... {date_filter}
     """
-    return conn.execute(sql).fetchdf().to_dict('records')
-```
-
-### Step 4 — Backend: Router
-Buat atau update `backend/routers/<feature>.py`:
-```python
-from fastapi import APIRouter
-router = APIRouter()
-
-@router.get("/api/<feature>", response_model=list[FeatureResponse])
-def get_feature(...):
-    return db.get_feature_data(...)
+    df = await db.run_query(sql)
+    return [FeatureResponse(...) for _, row in df.iterrows()]
 ```
 
 Daftarkan di `backend/main.py`:
 ```python
-app.include_router(feature_router)
+from routers import feature
+app.include_router(feature.router, prefix="/api")
 ```
 
-### Step 5 — Frontend: API Client
-Di `frontend/lib/api.ts`, tambah fungsi fetch:
+> **Jangan** tambah fungsi query ke `db.py` — langsung tulis SQL inline di router.
+> Gunakan view `enriched` (bukan `transactions`) karena sudah di-join dengan terminal & BIN.
+
+### Step 4 — Frontend: API Client
+Di `frontend/lib/api.ts`, tambah interface params dan fungsi fetch:
 ```typescript
-export async function getFeatureData(params) {
-  const res = await fetch(`${API_URL}/api/<feature>?${params}`)
-  return res.json()
+export interface FeatureParams {
+  date_from?: string;
+  date_to?: string;
 }
+
+export const getFeatureData = (params: FeatureParams = {}): Promise<FeatureResponse[]> =>
+  apiFetch<FeatureResponse[]>(`/api/<feature>${buildParams(params)}`);
 ```
 
 ### Step 6 — Frontend: Component

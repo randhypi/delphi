@@ -11,8 +11,6 @@ async def execute_query(body: QueryRequest):
     db.check_data_or_raise()
 
     sql_stripped = body.sql.strip()
-    if not sql_stripped.upper().startswith("SELECT"):
-        raise HTTPException(status_code=400, detail="Only SELECT statements are allowed.")
 
     try:
         start = time.perf_counter()

@@ -49,8 +49,8 @@ def check_data_or_raise() -> None:
         )
 
 
-def register_tables() -> None:
-    """Register CSV files as DuckDB views. Called at startup and after each upload."""
+def _register_tables_sync() -> None:
+    """Synchronous implementation — must be run in the DuckDB executor, not the event loop."""
     global _conn, _bin_df
 
     if not is_data_loaded():
@@ -65,7 +65,7 @@ def register_tables() -> None:
             _bin_df = load_bin_lookup(BINLIST_FILE)
             conn.register("bin_lookup", _bin_df)
 
-            tx_path = str(TRANSACTIONS_FILE).replace("\\", "/")
+            tx_path   = str(TRANSACTIONS_FILE).replace("\\", "/")
             term_path = str(TERMINALS_FILE).replace("\\", "/")
 
             conn.execute(f"""
@@ -100,12 +100,22 @@ def register_tables() -> None:
                 LEFT JOIN bin_lookup b ON LEFT(CAST(t.PAN AS VARCHAR), 6) = b.bin
             """)
 
-            count = conn.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
-            logger.info(f"Tables registered OK — {count} rows in transactions.")
+            logger.info("Tables registered OK (views created).")
 
         except Exception as e:
             logger.error(f"register_tables() failed: {e}")
             raise
+
+
+def register_tables() -> None:
+    """Synchronous entry point — safe to call from startup lifespan (not async context)."""
+    _register_tables_sync()
+
+
+async def register_tables_async() -> None:
+    """Async entry point — runs registration in the DuckDB executor without blocking the event loop."""
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(_executor, _register_tables_sync)
 
 
 async def run_query(sql: str) -> pd.DataFrame:

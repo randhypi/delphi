@@ -41,45 +41,52 @@
 ```
 frontend/
 ├── app/
-│   ├── layout.tsx          ← Root layout, global styles
-│   ├── page.tsx            ← Executive Summary (landing)
-│   ├── analytics/page.tsx  ← Deep-dive analytics
-│   ├── map/page.tsx        ← Peta sebaran terminal & transaksi
-│   ├── terminals/page.tsx  ← Status & health terminal
-│   └── query/page.tsx      ← Custom SQL playground
+│   ├── layout.tsx                     ← Root layout, global styles
+│   ├── page.tsx                       ← Executive Summary (landing)
+│   ├── analytics/page.tsx             ← Deep-dive analytics
+│   ├── map/page.tsx                   ← Peta sebaran terminal & transaksi
+│   ├── terminals/page.tsx             ← Status & health terminal
+│   ├── transactions/page.tsx          ← Tabel transaksi + filter
+│   ├── query/page.tsx                 ← Custom SQL playground + Gemini viz
+│   ├── productivity/page.tsx          ← Dashboard produktivitas agen
+│   └── productivity/detail/page.tsx  ← Drill-down detail satu dimensi
 ├── components/
-│   ├── kpi/                ← KPI cards (Tremor)
-│   ├── charts/             ← Recharts & ApexCharts wrappers
-│   ├── map/                ← Leaflet components
-│   ├── table/              ← Data tables
-│   └── upload/             ← Upload CSV components
+│   ├── kpi/                           ← KPI cards
+│   ├── layout/Sidebar.tsx             ← Navigasi + saved queries sub-menu
+│   ├── query/QueryResultViz.tsx       ← ApexCharts viz renderer (10 types)
+│   ├── map/                           ← Leaflet components
+│   ├── table/                         ← Data tables
+│   └── upload/                        ← Upload CSV components
 ├── lib/
-│   └── api.ts              ← Axios/fetch API client
+│   └── api.ts              ← Fetch API client + helpers
 └── types/
-    └── index.ts            ← TypeScript types
+    └── index.ts            ← TypeScript interfaces
 ```
 
 ### Backend — `backend/`
 ```
 backend/
-├── main.py                 ← FastAPI app entry, CORS config
+├── main.py                 ← FastAPI app entry, CORS config, lifespan
 ├── routers/
 │   ├── overview.py         ← GET /api/overview
 │   ├── analytics.py        ← GET /api/analytics/*
 │   ├── transactions.py     ← GET /api/transactions
 │   ├── terminals.py        ← GET /api/terminals
-│   ├── query.py            ← POST /api/query (DuckDB SQL)
+│   ├── query.py            ← POST /api/query (DuckDB SQL, delegated validation)
+│   ├── productivity.py     ← GET /api/productivity/trend|summary|detail
+│   ├── saved_queries.py    ← GET/POST/DELETE /api/saved-queries
 │   └── upload.py           ← POST /api/upload/*
 ├── services/
-│   ├── db.py               ← DuckDB connection & query runner
-│   ├── enrichment.py       ← BIN lookup, terminal join logic
-│   └── loader.py           ← CSV/JSON file loader
+│   ├── db.py               ← DuckDB singleton, async query runner, async register
+│   ├── enrichment.py       ← BIN lookup, RC description mapping
+│   └── loader.py           ← CSV/JSON file saver + header validation
 ├── models/
 │   └── schemas.py          ← Pydantic request/response models
-├── data/                   ← Dataset files
+├── data/                   ← Dataset files (gitignored)
 │   ├── transactions.csv
 │   ├── Terminal.csv
-│   └── bin_list.json
+│   ├── bin_list.json
+│   └── saved_queries.json  ← Persisted saved queries
 └── requirements.txt
 ```
 
@@ -98,9 +105,10 @@ Next.js → GET /api/analytics/trend
 ```
 Next.js → POST /api/upload/transactions (multipart/form-data)
         → upload.py router
-        → validasi schema CSV
-        → replace backend/data/transactions.csv
-        → invalidate DuckDB cache
+        → simpan file ke disk (async, non-blocking)
+        → validasi header CSV
+        → register_tables_async() — jalan di ThreadPoolExecutor
+          (buat ulang DuckDB in-memory connection + views)
         → return { success, rows_count }
 ```
 
@@ -108,8 +116,8 @@ Next.js → POST /api/upload/transactions (multipart/form-data)
 ```
 Next.js → POST /api/query { sql: "SELECT ..." }
         → query.py router
-        → DuckDB execute (sandboxed — hanya SELECT)
-        → return JSON rows + column names
+        → DuckDB execute (validasi diserahkan ke DuckDB — error jika bukan SELECT)
+        → return JSON rows + column names + execution_ms
 ```
 
 ## Key Design Decisions

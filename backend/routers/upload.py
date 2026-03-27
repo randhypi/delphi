@@ -19,7 +19,7 @@ async def upload_transactions(file: UploadFile = File(...)):
             detail=f"Invalid CSV headers. Expected: {'; '.join(loader.TRANSACTIONS_EXPECTED_HEADERS)}"
         )
 
-    db.register_tables()
+    await db.register_tables_async()
     return UploadResponse(success=True, rows=rows, filename="transactions.csv")
 
 
@@ -37,7 +37,7 @@ async def upload_terminal(file: UploadFile = File(...)):
             detail=f"Invalid CSV headers. Expected: {'; '.join(loader.TERMINALS_EXPECTED_HEADERS)}"
         )
 
-    db.register_tables()
+    await db.register_tables_async()
     return UploadResponse(success=True, rows=rows, filename="Terminal.csv")
 
 
@@ -49,5 +49,5 @@ async def upload_binlist(file: UploadFile = File(...)):
     await loader.save_upload_file(file, db.BINLIST_FILE)
     entries = loader.validate_json_binlist(db.BINLIST_FILE)
 
-    db.register_tables()
+    await db.register_tables_async()
     return BinUploadResponse(success=True, entries=entries, filename="bin_list.json")

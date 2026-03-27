@@ -215,6 +215,162 @@ Eksekusi SQL query custom via DuckDB. Hanya SELECT yang diizinkan.
 
 ---
 
+## Productivity
+
+### `GET /api/productivity/trend`
+Tren transaksi harian per dimensi (top N), untuk line chart & heatmap.
+
+**Query Params:**
+| Param | Type | Default | Keterangan |
+|---|---|---|---|
+| `date_from` | `YYYY-MM-DD` | min date | Filter awal |
+| `date_to` | `YYYY-MM-DD` | max date | Filter akhir |
+| `group_by` | `group`\|`city`\|`loket` | `group` | Dimensi agregasi |
+| `top_n` | int (1–20) | `5` | Jumlah dimensi teratas |
+
+**Response:**
+```json
+[{"period":"2026-03-20","dimension":"SMARTSERVER","total_trx":1420,"terminal_aktif":312,"success_rate":84.5}]
+```
+
+---
+
+### `GET /api/productivity/summary`
+Ringkasan produktivitas dengan growth vs periode sebelumnya, alert otomatis, dan KPI.
+
+**Query Params:** sama dengan `/trend`, tambah `top_n` default `10`
+
+**Response:**
+```json
+{
+  "items": [{"rank":1,"dimension":"SMARTSERVER","total_trx":9940,"avg_per_hari":1420.0,"terminal_aktif":312,"success_rate":84.5,"prev_total_trx":8200,"growth_pct":21.2}],
+  "alerts": [{"dimension":"ALFA","severity":"critical","message":"Success rate ALFA hanya 65.0%..."}],
+  "kpi": {"active_agents":8,"avg_trx_per_agent_per_day":177.5,"terminal_efficiency_pct":68.3,"alert_count":1}
+}
+```
+
+**Growth calculation:** `(curr_avg_per_day - prev_avg_per_day) / prev_avg_per_day × 100`
+- `curr_avg_per_day = total_trx / period_days`
+- `prev_avg_per_day = prev_total_trx / prev_days_with_data` (hari yang benar-benar ada data di window sebelumnya)
+- `growth_pct = null` jika tidak ada data apapun di window sebelumnya
+
+**Alert rules (dari top N items saja):**
+- `terminal_aktif == 0` → warning (dormant)
+- `success_rate < 70%` → critical
+- `growth_pct < -25%` → critical
+- `growth_pct > 20%` → positive
+
+**KPI fields:**
+- `active_agents` = COUNT(DISTINCT dim_col) semua dimensi (bukan hanya top N)
+- `avg_trx_per_agent_per_day` = total trx semua dimensi ÷ active_agents ÷ period_days
+- `terminal_efficiency_pct` = terminal aktif (ada trx) ÷ total terminal master × 100
+
+---
+
+### `GET /api/productivity/detail`
+Detail mendalam satu dimensi: KPI, tren harian vs benchmark, distribusi RC, peak hours heatmap, breakdown terminal.
+
+**Query Params:**
+| Param | Type | Default | Keterangan |
+|---|---|---|---|
+| `dimension` | string | **required** | Nilai dimensi (contoh: "SMARTSERVER") |
+| `date_from` | `YYYY-MM-DD` | min date | Filter awal |
+| `date_to` | `YYYY-MM-DD` | max date | Filter akhir |
+| `group_by` | `group`\|`city`\|`loket` | `group` | Dimensi agregasi |
+
+**Response:**
+```json
+{
+  "dimension": "SMARTSERVER",
+  "group_by": "group",
+  "date_from": "2026-03-20",
+  "date_to": "2026-03-27",
+  "period_days": 8,
+  "kpi": {
+    "active_agents": 312,
+    "avg_trx_per_agent_per_day": 4.5,
+    "terminal_efficiency_pct": 84.5,
+    "alert_count": 9940
+  },
+  "trend": [{"period": "2026-03-20", "total_trx": 1200}],
+  "overall_trend": [{"period": "2026-03-20", "total_trx": 890}],
+  "rc_distribution": [{"rc": "51", "description": "Insufficient Funds", "count": 420, "percentage": 38.2}],
+  "peak_hours": [{"hour": 10, "day_of_week": 0, "total_trx": 145}],
+  "terminals": [{"terminal_id": "89800533", "loket_name": "TOKO ABC", "city": "MANADO", "total_trx": 145, "success_rate": 86.2, "last_transaction": "2026-03-27 06:56:21"}]
+}
+```
+
+**Notes:**
+- `kpi.alert_count` dipakai sebagai `total_trx` pada konteks detail
+- `kpi.terminal_efficiency_pct` dipakai sebagai `success_rate` pada konteks detail
+- `peak_hours.day_of_week`: 0=Senin … 6=Minggu
+
+---
+
+## Saved Queries
+
+### `GET /api/saved-queries`
+List semua saved query (tanpa result data, untuk sidebar).
+
+**Response:**
+```json
+[
+  { "id": "uuid", "title": "Revenue per Grup", "saved_at": "2026-03-27T10:00:00", "viz_type": "bar" }
+]
+```
+
+---
+
+### `GET /api/saved-queries/{id}`
+Ambil satu saved query lengkap dengan result data.
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "title": "Revenue per Grup",
+  "sql": "-- VIZ: ...\nSELECT ...",
+  "viz_config": { "type": "bar", "x": "grp", "y": "revenue", "title": "Revenue per Grup" },
+  "insight": "Grup MITRA mendominasi...",
+  "result": { "columns": [...], "rows": [...], "row_count": 15, "execution_ms": 42 },
+  "saved_at": "2026-03-27T10:00:00"
+}
+```
+
+**Error:**
+```json
+{ "detail": "Saved query not found." }
+```
+
+---
+
+### `POST /api/saved-queries`
+Simpan hasil query.
+
+**Request:**
+```json
+{
+  "title": "Revenue per Grup",
+  "sql": "-- VIZ: ...\nSELECT ...",
+  "viz_config": { "type": "bar", "x": "grp", "y": "revenue" },
+  "insight": "...",
+  "result": { "columns": [...], "rows": [...], "row_count": 15, "execution_ms": 42 }
+}
+```
+
+**Response:** `201 Created` — same as GET single item.
+
+---
+
+### `DELETE /api/saved-queries/{id}`
+Hapus saved query.
+
+**Response:** `204 No Content`
+
+**Storage:** `backend/data/saved_queries.json`
+
+---
+
 ## Upload
 
 ### `POST /api/upload/transactions`

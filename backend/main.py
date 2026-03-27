@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from services import db
-from routers import overview, analytics, transactions, terminals, query, upload
+from routers import overview, analytics, transactions, terminals, query, upload, saved_queries, productivity
 
 
 @asynccontextmanager
@@ -33,6 +33,8 @@ app.include_router(analytics.router, prefix="/api", tags=["Analytics"])
 app.include_router(transactions.router, prefix="/api", tags=["Transactions"])
 app.include_router(terminals.router, prefix="/api", tags=["Terminals"])
 app.include_router(query.router, prefix="/api", tags=["Query"])
+app.include_router(saved_queries.router, prefix="/api", tags=["Saved Queries"])
+app.include_router(productivity.router, prefix="/api", tags=["Productivity"])
 app.include_router(upload.router, prefix="/api", tags=["Upload"])
 
 

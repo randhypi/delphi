@@ -24,13 +24,12 @@ async def save_upload_file(upload_file: UploadFile, dest_path: Path) -> int:
         tmp_path.write_bytes(content)
         shutil.move(str(tmp_path), str(dest_path))
 
-        # Count rows
+        # Count rows (fast: count newlines without decoding full content)
         if dest_path.suffix.lower() == ".json":
             data = json.loads(content)
             return len(data) if isinstance(data, dict) else 0
         else:
-            lines = content.decode("utf-8", errors="replace").splitlines()
-            return max(0, len(lines) - 1)  # exclude header
+            return max(0, content.count(b"\n") - 1)  # subtract header row
     except Exception as e:
         if tmp_path.exists():
             tmp_path.unlink()

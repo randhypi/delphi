@@ -109,3 +109,107 @@ export interface BinUploadResponse {
 export interface ApiError {
   detail: string;
 }
+
+export type VizConfig = {
+  type: string;
+  x?: string;
+  y?: string;
+  series?: string;
+  title?: string;
+};
+
+export interface SavedQueryListItem {
+  id: string;
+  title: string;
+  saved_at: string;
+  viz_type: string | null;
+}
+
+export interface ProductivityTrendItem {
+  period: string;
+  dimension: string;
+  total_trx: number;
+  terminal_aktif: number;
+  success_rate: number;
+}
+
+export interface ProductivitySummaryItem {
+  rank: number;
+  dimension: string;
+  total_trx: number;
+  avg_per_hari: number;
+  terminal_aktif: number;
+  success_rate: number;
+  prev_total_trx: number;
+  growth_pct: number | null;
+}
+
+export interface ProductivityAlert {
+  dimension: string;
+  severity: "critical" | "warning" | "positive";
+  message: string;
+}
+
+export interface ProductivityKPI {
+  active_agents: number;
+  avg_trx_per_agent_per_day: number;
+  terminal_efficiency_pct: number;
+  alert_count: number;
+}
+
+export interface ProductivitySummaryResponse {
+  items: ProductivitySummaryItem[];
+  alerts: ProductivityAlert[];
+  kpi: ProductivityKPI;
+}
+
+export interface SavedQuery {
+  id: string;
+  title: string;
+  sql: string;
+  viz_config: VizConfig | null;
+  insight: string | null;
+  result: QueryResponse;
+  saved_at: string;
+}
+
+export interface SimpleTrendItem {
+  period: string;
+  total_trx: number;
+}
+
+export interface ProductivityDetailTerminal {
+  terminal_id: string;
+  loket_name: string;
+  city: string;
+  total_trx: number;
+  success_rate: number;
+  last_transaction: string | null;
+}
+
+export interface ProductivityDetailRCItem {
+  rc: string;
+  description: string;
+  count: number;
+  percentage: number;
+}
+
+export interface ProductivityDetailPeakHour {
+  hour: number;
+  day_of_week: number;
+  total_trx: number;
+}
+
+export interface ProductivityDetailResponse {
+  dimension: string;
+  group_by: string;
+  date_from: string;
+  date_to: string;
+  period_days: number;
+  kpi: ProductivityKPI;
+  trend: SimpleTrendItem[];
+  overall_trend: SimpleTrendItem[];
+  rc_distribution: ProductivityDetailRCItem[];
+  peak_hours: ProductivityDetailPeakHour[];
+  terminals: ProductivityDetailTerminal[];
+}
