@@ -232,19 +232,19 @@ export default function HomePage() {
               label="Upload transactions.csv"
               accept=".csv"
               description="File laporan transaksi (semicolon separator)"
-              onUpload={async (file) => { const r = await uploadTransactions(file); handleUploadDone(); return r; }}
+              onUpload={async (file, onProgress) => { const r = await uploadTransactions(file, onProgress); handleUploadDone(); return r; }}
             />
             <UploadZone
               label="Upload Terminal.csv"
               accept=".csv"
               description="Master data terminal & loket"
-              onUpload={async (file) => { const r = await uploadTerminal(file); handleUploadDone(); return r; }}
+              onUpload={async (file, onProgress) => { const r = await uploadTerminal(file, onProgress); handleUploadDone(); return r; }}
             />
             <UploadZone
               label="Upload bin_list.json"
               accept=".json"
               description="BIN → nama bank mapping"
-              onUpload={async (file) => { const r = await uploadBinlist(file); handleUploadDone(); return r as any; }}
+              onUpload={async (file, onProgress) => { const r = await uploadBinlist(file, onProgress); handleUploadDone(); return r as any; }}
             />
           </div>
         )}

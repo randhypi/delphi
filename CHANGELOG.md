@@ -6,6 +6,24 @@ Versioning: [semver.org](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-03-30
+### Added
+- **Google OAuth (NextAuth.js v5)** — autentikasi via Google, hanya email yang diizinkan bisa login
+  - Middleware proteksi semua route di production (`NODE_ENV === 'production'`)
+  - Dev lokal otomatis bypass auth tanpa konfigurasi tambahan
+  - Halaman login (`/app/login/`) standalone dengan tombol "Sign in with Google"
+- **Error pages** — halaman error custom konsisten dengan desain dashboard:
+  - `not-found.tsx` — 404 page dengan link kembali ke dashboard
+  - `error.tsx` — runtime error dengan tombol "Coba Lagi"
+  - `global-error.tsx` — error kritis level root layout
+- **Upload progress bar** — `UploadZone` kini menampilkan progress real-time saat upload file besar
+
+### Changed
+- **Upload menggunakan XHR** (bukan `fetch`) — mendapat `onprogress` events untuk progress tracking
+- **Backend upload chunked** — `save_upload_file` membaca file per-chunk 1MB (bukan `read()` sekali penuh), hemat memory untuk file besar
+- **Next.js rewrites** — diganti ke `fallback` agar `/api/auth/*` ditangani NextAuth, bukan di-proxy ke FastAPI backend
+- **CORS origins** — ditambahkan `https://delphi.randhypi.com` dan `http://localhost:3004`
+
 ## [0.5.1] - 2026-03-27
 ### Fixed
 - **Growth logic** di `/productivity/summary` — sebelumnya growth `None` untuk periode 30 Hari karena window previous berada di luar dataset. Sekarang dibandingkan avg/hari (bukan total), sehingga bekerja selama ada data apapun di window sebelumnya

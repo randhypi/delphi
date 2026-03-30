@@ -19,7 +19,7 @@ import type {
   ProductivityDetailResponse,
 } from "@/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
@@ -42,7 +42,8 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
-function buildParams(params: Record<string, string | number | boolean | undefined | null>): string {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildParams(params: Record<string, any>): string {
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== null && v !== "") {
@@ -178,23 +179,51 @@ export const deleteSavedQuery = (id: string): Promise<void> =>
 
 // ─── Upload ───────────────────────────────────────────────────────────────────
 
-export const uploadTransactions = (file: File): Promise<UploadResponse> => {
-  const fd = new FormData();
-  fd.append("file", file);
-  return apiFetch<UploadResponse>("/api/upload/transactions", { method: "POST", body: fd });
-};
+function xhrUpload<T>(path: string, file: File, onProgress: (pct: number) => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const fd = new FormData();
+    fd.append("file", file);
 
-export const uploadTerminal = (file: File): Promise<UploadResponse> => {
-  const fd = new FormData();
-  fd.append("file", file);
-  return apiFetch<UploadResponse>("/api/upload/terminal", { method: "POST", body: fd });
-};
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable) {
+        onProgress(Math.round((e.loaded / e.total) * 99)); // cap at 99% — 100% = server done
+      }
+    });
 
-export const uploadBinlist = (file: File): Promise<BinUploadResponse> => {
-  const fd = new FormData();
-  fd.append("file", file);
-  return apiFetch<BinUploadResponse>("/api/upload/binlist", { method: "POST", body: fd });
-};
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          reject(new Error("Invalid response"));
+        }
+      } else {
+        try {
+          const err = JSON.parse(xhr.responseText);
+          reject(new Error(err.detail ?? `HTTP ${xhr.status}`));
+        } catch {
+          reject(new Error(`HTTP ${xhr.status}`));
+        }
+      }
+    });
+
+    xhr.addEventListener("error", () => reject(new Error("Network error")));
+    xhr.addEventListener("abort", () => reject(new Error("Upload dibatalkan")));
+
+    xhr.open("POST", `${API_URL}${path}`);
+    xhr.send(fd);
+  });
+}
+
+export const uploadTransactions = (file: File, onProgress: (pct: number) => void = () => {}): Promise<UploadResponse> =>
+  xhrUpload<UploadResponse>("/api/upload/transactions", file, onProgress);
+
+export const uploadTerminal = (file: File, onProgress: (pct: number) => void = () => {}): Promise<UploadResponse> =>
+  xhrUpload<UploadResponse>("/api/upload/terminal", file, onProgress);
+
+export const uploadBinlist = (file: File, onProgress: (pct: number) => void = () => {}): Promise<BinUploadResponse> =>
+  xhrUpload<BinUploadResponse>("/api/upload/binlist", file, onProgress);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

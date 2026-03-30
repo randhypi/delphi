@@ -15,21 +15,32 @@ TERMINALS_EXPECTED_HEADERS = [
 
 
 async def save_upload_file(upload_file: UploadFile, dest_path: Path) -> int:
-    """Save uploaded file to destination. Returns row count (lines - 1 for CSV, keys for JSON)."""
+    """Save uploaded file to destination using chunked read. Returns row count."""
     dest_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = dest_path.with_suffix(dest_path.suffix + ".tmp")
 
     try:
-        content = await upload_file.read()
-        tmp_path.write_bytes(content)
+        newline_count = 0
+        chunk_size = 1024 * 1024  # 1MB chunks
+        is_json = dest_path.suffix.lower() == ".json"
+
+        with open(tmp_path, "wb") as f:
+            while True:
+                chunk = await upload_file.read(chunk_size)
+                if not chunk:
+                    break
+                f.write(chunk)
+                if not is_json:
+                    newline_count += chunk.count(b"\n")
+
         shutil.move(str(tmp_path), str(dest_path))
 
-        # Count rows (fast: count newlines without decoding full content)
-        if dest_path.suffix.lower() == ".json":
-            data = json.loads(content)
+        if is_json:
+            with open(dest_path, "r") as f:
+                data = json.load(f)
             return len(data) if isinstance(data, dict) else 0
         else:
-            return max(0, content.count(b"\n") - 1)  # subtract header row
+            return max(0, newline_count - 1)  # subtract header row
     except Exception as e:
         if tmp_path.exists():
             tmp_path.unlink()

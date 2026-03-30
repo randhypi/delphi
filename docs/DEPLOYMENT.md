@@ -72,15 +72,12 @@ pnpm install
 ```
 
 ### 3. Konfigurasi environment
-Buat file `.env.local`:
+Buat file `frontend/.env.development` (sudah ada di repo, untuk dev lokal):
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
+API_BACKEND_URL=http://localhost:8000
 ```
 
-Untuk production (server):
-```env
-NEXT_PUBLIC_API_URL=http://<SERVER_IP>:8000
-```
+> **Catatan**: `NEXT_PUBLIC_API_URL` tidak digunakan lagi. API dijaga privat via Next.js rewrites menggunakan `API_BACKEND_URL` (server-side only).
 
 ### 4. Jalankan frontend
 ```bash
@@ -98,59 +95,72 @@ pnpm start
 
 ### Struktur di Server
 ```
-/app/delphi/
+/home/healer/services/delphi/
 ├── frontend/
 ├── backend/
-└── ...
+├── logs/
+└── ecosystem.config.js   ← PM2 config (server-only, tidak di-commit)
 ```
 
-### Backend (systemd service)
-Buat file `/etc/systemd/system/delphi-backend.service`:
-```ini
-[Unit]
-Description=DELPHI Backend (FastAPI)
-After=network.target
+### Port
+- Frontend: `3004` (publik via Cloudflare → `delphi.randhypi.com`)
+- Backend: `4001` (lokal only, proxied via Next.js rewrites)
 
-[Service]
-User=ubuntu
-WorkingDirectory=/app/delphi/backend
-ExecStart=/app/delphi/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
-Restart=always
+### Backend — Setup
+```bash
+cd backend
+python3 -m venv --without-pip .venv
+curl -sS https://bootstrap.pypa.io/get-pip.py | .venv/bin/python3
+.venv/bin/pip install -r requirements.txt
+mkdir -p data
+```
 
-[Install]
-WantedBy=multi-user.target
+### Frontend — Environment (server)
+Buat `frontend/.env.production.local` (tidak di-commit):
+```env
+API_BACKEND_URL=http://localhost:4001
+
+# Google OAuth
+AUTH_SECRET=<openssl rand -base64 32>
+AUTH_GOOGLE_ID=<client-id>
+AUTH_GOOGLE_SECRET=<client-secret>
+AUTH_URL=https://delphi.randhypi.com
+```
+
+### PM2 — ecosystem.config.js (server-only)
+```js
+module.exports = {
+  apps: [
+    {
+      name: 'delphi-backend',
+      script: '/path/to/delphi/backend/.venv/bin/uvicorn',
+      args: 'main:app --host 127.0.0.1 --port 4001',
+      interpreter: 'none',
+      cwd: '/path/to/delphi/backend',
+      env: { PYTHONUNBUFFERED: '1' },
+    },
+    {
+      name: 'delphi-frontend',
+      script: 'pnpm',
+      args: 'start',
+      cwd: '/path/to/delphi/frontend',
+      env: { NODE_ENV: 'production', PORT: 3004 },
+    },
+  ],
+};
 ```
 
 ```bash
-sudo systemctl enable delphi-backend
-sudo systemctl start delphi-backend
-```
-
-### Frontend (PM2)
-```bash
-npm install -g pm2
-cd /app/delphi/frontend
-pnpm build
-pm2 start "pnpm start" --name delphi-frontend
+# Build & start
+cd frontend && pnpm install && pnpm build && cd ..
+mkdir -p logs
+pm2 start ecosystem.config.js
 pm2 save
-pm2 startup
 ```
 
-### Nginx (Reverse Proxy) — Opsional
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    location / {
-        proxy_pass http://localhost:3000;
-    }
-
-    location /api/ {
-        proxy_pass http://localhost:8000;
-    }
-}
-```
+### Cloudflare Tunnel
+Tambah public hostname via Dashboard (token mode — tidak edit config.yml):
+- `delphi.randhypi.com` → `HTTP` → `localhost:3004`
 
 ---
 
@@ -178,4 +188,6 @@ curl -X POST http://localhost:8000/api/upload/terminal \
 | Port 8000 sudah dipakai | `lsof -i :8000` → kill PID, atau ganti port |
 | CORS error di browser | Cek `CORS_ORIGINS` di `backend/main.py` |
 | DuckDB error "file not found" | Pastikan file ada di `backend/data/` |
-| Chart tidak muncul | Cek `NEXT_PUBLIC_API_URL` di `.env.local` |
+| Chart tidak muncul | Cek `API_BACKEND_URL` di `.env.production.local` |
+| Login loop / OAuth error | Pastikan redirect URI di Google Console sudah ada: `https://delphi.randhypi.com/api/auth/callback/google` |
+| Upload lambat / hang | Normal untuk file besar — ada progress bar; "Memproses data..." = DuckDB register tabel |
